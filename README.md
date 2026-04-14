@@ -1,7 +1,3 @@
-# Test user credentials:
-username: admin
-password: 123456
-
 ## Configuration
 
 in appsettings.json, specify the root folder you wish to serve, as well as the username and **hashed** password to login to the server
