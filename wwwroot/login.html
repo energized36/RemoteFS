@@ -3,16 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <title>Login — File Explorer</title>
 </head>
-<body>
-    <form>
-        <label for="username">username</label>
-        <input type="text" name="username" id="user" value="admin">
-        <label for="password">password</label>
-        <input type="password" name="password" id="pw" value="123456">
-        <button id="login-btn" type="button">login</button>
-    </form>
+<body id="login-page">
+    <div id="login-card">
+        <div id="login-header">
+            <img src="/folder.svg" id="login-icon" alt="folder">
+            <h1>File Explorer</h1>
+        </div>
+        <form id="login-form">
+            <div class="field">
+                <label for="user">Username</label>
+                <input type="text" id="user" name="username" autocomplete="username" spellcheck="false">
+            </div>
+            <div class="field">
+                <label for="pw">Password</label>
+                <input type="password" id="pw" name="password" autocomplete="current-password">
+            </div>
+            <p id="login-error"></p>
+            <button id="login-btn" type="button">Login</button>
+        </form>
+    </div>
+    <script src="login.js"></script>
 </body>
-<script src="login.js"></script>
 </html>

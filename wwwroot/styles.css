@@ -342,3 +342,107 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+/* ── Login page ──────────────────────────────────────── */
+
+#login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+#login-card {
+    width: 340px;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+
+#login-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#login-icon {
+    width: 32px;
+    height: 32px;
+    filter: brightness(0) invert(1);
+    opacity: 0.75;
+}
+
+#login-header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.field input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.field input:focus {
+    border-color: var(--accent);
+    background: rgba(167, 139, 250, 0.08);
+}
+
+#login-error {
+    font-size: 12px;
+    color: var(--danger);
+    min-height: 16px;
+}
+
+#login-btn {
+    margin-top: 4px;
+    padding: 9px 0;
+    width: 100%;
+    background: linear-gradient(135deg, #a78bfa, #7c5cbf);
+    color: #fff;
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(167, 139, 250, 0.25);
+    transition: opacity 0.15s, box-shadow 0.15s;
+}
+
+#login-btn:hover {
+    opacity: 0.88;
+    box-shadow: 0 4px 20px rgba(167, 139, 250, 0.4);
+}
