@@ -47,9 +47,7 @@ class Client {
         this.renderFiles(this.currentPath, false);
     }
 
-    onFileChanged(event) {
-        // Optionally highlight the file briefly to indicate it was modified
-        const el = document.querySelector(`[data-name="${event.name}"]`);
+    onFileChanged(_event) {
         // ToDo: add logic to do something here
     }
 
@@ -91,7 +89,7 @@ class Client {
 
     async openEditor(path, name){
         const res = await fetch(`/api/files/read?path=${encodeURIComponent(path)}`);
-        const text = await res.json();
+        const text = await res.text();
         document.getElementById("editor-filename").textContent = name;
         document.getElementById("editor-textarea").value = text;
         document.getElementById("editor-overlay").dataset.path = path;
@@ -151,7 +149,7 @@ class Client {
             .then(() => element.remove());
     }
     
-    getFiles(path){
+    async getFiles(path){
         return fetch(`/api/files/list?path=${encodeURIComponent(path)}`).then(res => res.json());
     }
 
@@ -274,7 +272,7 @@ class Client {
         this.renderFiles(initialPath, false);
         history.replaceState({ path: initialPath }, "", `?path=${encodeURIComponent(initialPath)}`);
 
-        document.getElementById("logout-btn").addEventListener("click", (e) => {
+        document.getElementById("logout-btn").addEventListener("click", () => {
             this.logout();    
         })
         
