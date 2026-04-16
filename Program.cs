@@ -2,6 +2,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddSingleton<FileService>(); // shared across requests
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5247", "http://localhost:8080")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // For authentification
 builder.Services.AddDistributedMemoryCache();
@@ -14,6 +24,7 @@ builder.Services.AddSession(options => {
 var app = builder.Build();
 
 app.UseWebSockets();
+app.UseCors();
 app.UseSession();
 
 // Middleware: Auth session check
