@@ -1,0 +1,12 @@
+services:
+  fileexplorer:
+    build: .
+    container_name: fileexplorer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${FILES_PATH:-/home/pi/files}:/data
+    environment:
+      - AdminCredentials__Username=${ADMIN_USERNAME}
+      - AdminCredentials__Password=${ADMIN_PASSWORD}

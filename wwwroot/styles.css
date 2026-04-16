@@ -112,6 +112,25 @@ html, body {
     text-decoration: none;
 }
 
+#search-input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    padding: 6px 12px;
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+#search-input::placeholder { color: var(--text-dim); }
+
+#search-input:focus {
+    border-color: var(--accent);
+    background: rgba(167, 139, 250, 0.08);
+}
+
 #toolbar-actions {
     display: flex;
     align-items: center;
@@ -260,6 +279,12 @@ html, body {
     color: var(--accent);
 }
 
+.folder-card.drag-over {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-left: 2px solid var(--accent);
+}
+
 /* ── Files pane ──────────────────────────────────────── */
 
 #files-container {
@@ -292,6 +317,35 @@ html, body {
     box-shadow: 0 2px 16px rgba(167, 139, 250, 0.08);
 }
 
+.file-card.dragging {
+    opacity: 0.4;
+    border-color: var(--accent);
+}
+
+#drop-zone {
+    display: none;
+    position: absolute;
+    inset: 0;
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 500;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#files-container {
+    position: relative;
+}
+
+#files-container.drag-accepting #drop-zone {
+    display: flex;
+}
+
 .file-card::before {
     content: "";
     display: inline-block;
@@ -317,7 +371,9 @@ html, body {
 /* ── Buttons ─────────────────────────────────────────── */
 
 .download-btn,
-.delete-btn {
+.delete-btn,
+.rename-btn,
+.edit-btn {
     padding: 4px 10px;
     border-radius: var(--radius);
     font-size: 12px;
@@ -555,6 +611,73 @@ html, body {
 
 #rename-cancel-btn:hover { background: rgba(255,255,255,0.12); }
 
+/* ── Confirm dialog ──────────────────────────────────── */
+
+#confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+#confirm-overlay.active { display: flex; }
+
+#confirm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+#confirm-message {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+#confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+#confirm-ok-btn {
+    padding: 6px 16px;
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+#confirm-ok-btn:hover { opacity: 0.85; }
+
+#confirm-cancel-btn {
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+#confirm-cancel-btn:hover { background: rgba(255,255,255,0.12); }
+
 /* ── Video overlay ───────────────────────────────────── */
 
 #video-overlay {
@@ -578,6 +701,32 @@ html, body {
     max-height: 90vh;
     border-radius: var(--radius);
     box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+
+/* ── Image overlay ───────────────────────────────────── */
+
+#image-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    cursor: zoom-out;
+}
+
+#image-overlay.active { display: flex; }
+
+#image-preview {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: var(--radius);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    object-fit: contain;
+    cursor: default;
 }
 
 /* ── Scrollbar ───────────────────────────────────────── */

@@ -5,10 +5,13 @@ A self-hosted web file explorer built with ASP.NET Core and vanilla JavaScript. 
 ## Features
 
 - Browse directories and files through a web UI
-- Upload files with a live progress bar
-- Download, rename, and delete files
+- Upload files with a progress bar — via button or drag-and-drop from your desktop
+- Download, rename, and delete files (with confirmation)
+- Drag and drop files between folders in the sidebar
 - Edit text files directly in the browser
+- Preview images in a lightbox
 - Stream video files (mp4, webm, ogg, mov)
+- Search files by name in the current directory
 - Real-time file system updates via WebSocket
 - Single-admin authentication with session cookies
 
@@ -16,6 +19,18 @@ A self-hosted web file explorer built with ASP.NET Core and vanilla JavaScript. 
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) — for running locally
 - [Docker](https://www.docker.com/) — for running in a container
+
+---
+
+## Generating a Bcrypt Password Hash
+
+Before setting up, you need a bcrypt hash of your chosen password. Use an online generator:
+
+1. Go to [bcrypt-generator.com](https://bcrypt-generator.com)
+2. Enter your password and use a cost factor of `11` or `12`
+3. Click **Generate** and copy the resulting hash (starts with `$2a$...`)
+
+Keep this hash — you'll need it in the steps below.
 
 ---
 
@@ -27,16 +42,7 @@ git clone <your-repo-url>
 cd FileExplorer
 ```
 
-**2. Generate a bcrypt hash of your chosen password:**
-
-Add a temporary endpoint to `AuthController.cs`, start the app, visit `http://localhost:5247/api/auth/hash?pw=yourpassword`, copy the hash, then remove the endpoint.
-
-```csharp
-[HttpGet("hash")]
-public IActionResult Hash([FromQuery] string pw) => Ok(BCrypt.Net.BCrypt.HashPassword(pw));
-```
-
-**3. Configure credentials in `appsettings.Development.json`:**
+**2. Configure credentials in `appsettings.Development.json`:**
 ```json
 {
   "RootPath": "/path/to/your/folder",
@@ -49,66 +55,69 @@ public IActionResult Hash([FromQuery] string pw) => Ok(BCrypt.Net.BCrypt.HashPas
 
 > `appsettings.Development.json` is gitignored — your credentials will not be committed.
 
-**4. Run the app:**
+**3. Run the app:**
 ```bash
 dotnet run
 ```
 
-**5. Open your browser at:** `http://localhost:5247`
-
----
-
-## Running with Docker
-
-**1. Build the image:**
-```bash
-docker build -t fileexplorer .
-```
-
-**2. Run the container:**
-```bash
-docker run -d \
-  --restart unless-stopped \
-  -p 8080:8080 \
-  -v /path/to/your/folder:/data \
-  -e AdminCredentials__Username=admin \
-  -e AdminCredentials__Password='$2a$11$your_bcrypt_hash_here' \
-  --name fileexplorer \
-  fileexplorer
-```
-
-- `-v /path/to/your/folder:/data` — mounts a folder from your host machine into the container
-- `RootPath` is set to `/data` in `appsettings.json` by default — do not change this when using Docker
-- Pass credentials as environment variables so they never touch the repository
-- ASP.NET Core maps `__` in env var names to `:` in config keys, so `AdminCredentials__Username` maps to `AdminCredentials:Username`
-
-**3. Open your browser at:** `http://localhost:8080`
+**4. Open your browser at:** `http://localhost:5247`
 
 ---
 
 ## Deploying on a Raspberry Pi
 
-**1. Build for ARM64 on your Mac:**
+**1. Install Docker on the Pi** if not already installed:
 ```bash
-docker buildx build --platform linux/arm64 -t fileexplorer .
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
 ```
+Log out and back in for the group change to take effect.
 
-**2. Transfer and run on the Pi** (or build directly on the Pi):
+**2. Clone the repository on the Pi:**
 ```bash
 git clone <your-repo-url>
 cd FileExplorer
-docker build -t fileexplorer .
-docker run -d \
-  --restart unless-stopped \
-  -p 8080:8080 \
-  -v /home/pi/files:/data \
-  -e AdminCredentials__Username=admin \
-  -e AdminCredentials__Password='$2a$11$your_bcrypt_hash_here' \
-  --name fileexplorer \
-  fileexplorer
 ```
 
-**3. Access on your local network at:** `http://<pi-ip>:8080`
+**3. Set up your environment variables:**
+
+Copy the example env file and fill in your values:
+```bash
+cp .env.example .env
+nano .env
+```
+
+`.env` contents:
+```
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=$2a$11$your_bcrypt_hash_here
+FILES_PATH=/path/to/your/folder
+```
+
+> `.env` is gitignored — your credentials will not be committed.
+
+**4. Build and start with Docker Compose:**
+```bash
+docker compose up -d --build
+```
+
+**5. Find your Pi's IP address:**
+```bash
+hostname -I
+```
+
+**6. Access on your local network at:** `http://<pi-ip>:8080`
+
+---
+
+## Updating the App
+
+To pull new changes and rebuild on the Pi:
+```bash
+cd FileExplorer
+git pull
+docker compose up -d --build
+```
 
 ---
 
@@ -160,7 +169,7 @@ sudo systemctl start cloudflared
 ## Security Notes
 
 - Passwords are stored as **bcrypt hashes** — never store plaintext passwords
-- Do not commit `appsettings.Development.json` (it is gitignored)
+- Do not commit `appsettings.Development.json` or `.env` (both are gitignored)
 - Do not commit credentials to `appsettings.json` — use environment variables in production
 - Session cookies are `HttpOnly` — JavaScript cannot read them
 - All file paths are validated server-side to prevent path traversal attacks
@@ -173,22 +182,24 @@ sudo systemctl start cloudflared
 ```
 FileExplorer/
 ├── Controllers/
-│   ├── AuthController.cs       # Login, logout
-│   └── FilesController.cs      # File operations REST API
+│   ├── AuthController.cs        # Login, logout
+│   └── FilesController.cs       # File operations REST API
 ├── Middleware/
-│   └── FileWatcherHandler.cs   # WebSocket file system watcher
+│   └── FileWatcherHandler.cs    # WebSocket file system watcher
 ├── Models/
-│   └── Requests.cs             # Request body models
+│   └── Requests.cs              # Request body models
 ├── Services/
-│   └── FileService.cs          # File system logic
+│   └── FileService.cs           # File system logic
 ├── wwwroot/
-│   ├── index.html              # Main app
-│   ├── index.js                # Frontend client
-│   ├── login.html              # Login page
-│   ├── login.js                # Login logic
-│   └── styles.css              # Shared styles
-├── appsettings.json            # Base config (no secrets)
+│   ├── index.html               # Main app
+│   ├── index.js                 # Frontend client
+│   ├── login.html               # Login page
+│   ├── login.js                 # Login logic
+│   └── styles.css               # Shared styles
+├── appsettings.json             # Base config (no secrets)
 ├── appsettings.Development.json # Local dev config (gitignored)
+├── docker-compose.yml           # Compose deployment
+├── .env.example                 # Environment variable template
 ├── Dockerfile
-└── Program.cs                  # App entry point and middleware
+└── Program.cs                   # App entry point and middleware
 ```

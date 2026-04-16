@@ -13,6 +13,7 @@
                 <button id="back-btn" disabled>&#8592;</button>
                 <div id="breadcrumbs"></div>
             </div>
+            <input type="text" id="search-input" placeholder="Search files...">
             <div id="toolbar-actions">
                 <label id="upload-btn">
                     Upload
@@ -27,11 +28,16 @@
         </div>
         <div id="explorer-body">
             <aside id="directory-sidebar"></aside>
-            <main id="files-container"></main>
+            <main id="files-container">
+                <div id="drop-zone">Drop files here to upload</div>
+            </main>
         </div>
     </div>
     <div id="video-overlay">
         <video id="video-player" controls></video>
+    </div>
+    <div id="image-overlay">
+        <img id="image-preview" alt="preview">
     </div>
     <div id="editor-overlay">
         <div id="editor-card">
@@ -52,6 +58,15 @@
             <div id="rename-actions">
                 <button id="rename-confirm-btn">Rename</button>
                 <button id="rename-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirm-overlay">
+        <div id="confirm-card">
+            <p id="confirm-message"></p>
+            <div id="confirm-actions">
+                <button id="confirm-ok-btn">Delete</button>
+                <button id="confirm-cancel-btn">Cancel</button>
             </div>
         </div>
     </div>

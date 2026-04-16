@@ -61,6 +61,12 @@ class Client {
         return path.split('/').pop();
     }
 
+    isImage(name){
+        return [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"].includes(
+            name.slice(name.lastIndexOf('.')).toLowerCase()
+        );
+    }
+
     isText(name){
         return [".txt", ".md", ".json", ".js", ".ts", ".css", ".html", ".xml", ".csv", ".log", ".sh", ".yaml", ".yml", ".env", ".cs", ".py"].includes(
             name.slice(name.lastIndexOf('.')).toLowerCase()
@@ -69,6 +75,13 @@ class Client {
 
     isVideo(name){
         return [".mp4", ".webm", ".ogg", ".mov"].includes(name.slice(name.lastIndexOf('.')).toLowerCase());
+    }
+
+    openImage(url){
+        const img = document.getElementById("image-preview");
+        const overlay = document.getElementById("image-overlay");
+        img.src = url;
+        overlay.classList.add("active");
     }
 
     openVideo(url){
@@ -133,6 +146,56 @@ class Client {
         this.renderFiles(this.currentPath, false);
     }
 
+    uploadFile(file, progressBar, progressFill, progressLabel){
+        const formData = new FormData();
+        formData.append("file", file);
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener("progress", (e) => {
+            if (!e.lengthComputable) return;
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.classList.remove("hidden");
+            progressFill.style.width = `${pct}%`;
+            progressLabel.textContent = `Uploading... ${pct}%`;
+        });
+
+        xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                progressFill.style.width = "100%";
+                progressLabel.textContent = "Upload complete!";
+                progressFill.classList.add("success");
+                setTimeout(() => {
+                    progressBar.classList.add("hidden");
+                    progressFill.style.width = "0%";
+                    progressFill.classList.remove("success");
+                }, 2000);
+                this.renderFiles(this.currentPath, false);
+            } else {
+                progressLabel.textContent = "Upload failed.";
+                progressFill.classList.add("error");
+                setTimeout(() => {
+                    progressBar.classList.add("hidden");
+                    progressFill.style.width = "0%";
+                    progressFill.classList.remove("error");
+                }, 3000);
+            }
+        });
+
+        xhr.addEventListener("error", () => {
+            progressLabel.textContent = "Upload failed.";
+            progressFill.classList.add("error");
+            setTimeout(() => {
+                progressBar.classList.add("hidden");
+                progressFill.style.width = "0%";
+                progressFill.classList.remove("error");
+            }, 3000);
+        });
+
+        xhr.open("POST", `/api/files/upload?path=${encodeURIComponent(this.currentPath)}`);
+        xhr.withCredentials = true;
+        xhr.send(formData);
+    }
+
     // api calls
     async logout(){
         const response = await fetch("/api/auth/logout", {
@@ -144,9 +207,17 @@ class Client {
         }
     }
     
-    deleteFile(path, element){
-        fetch(`/api/files?path=${encodeURIComponent(path)}`, { method: "DELETE" })
-            .then(() => element.remove());
+    confirmDelete(path, element){
+        document.getElementById("confirm-message").textContent = `Delete "${path.split("/").pop()}"? This cannot be undone.`;
+        document.getElementById("confirm-overlay").dataset.path = path;
+        document.getElementById("confirm-overlay").dataset.element = "";
+        this._pendingDelete = { path, element };
+        document.getElementById("confirm-overlay").classList.add("active");
+    }
+
+    async deleteFile(path, element){
+        await fetch(`/api/files?path=${encodeURIComponent(path)}`, { method: "DELETE", credentials: "include" });
+        element.remove();
     }
     
     async getFiles(path){
@@ -182,6 +253,8 @@ class Client {
     }
 
     async renderFiles(path = "", pushState = true){
+        const searchInput = document.getElementById("search-input");
+        if (searchInput) searchInput.value = "";
         let filesContainer = document.getElementById("files-container");
         let directorySidebar = document.getElementById("directory-sidebar");
         let files = await this.getFiles(path);
@@ -202,12 +275,49 @@ class Client {
             if (file.isDirectory){
                 fileElement.classList.add("folder-card");
                 fileElement.addEventListener("click", () => this.renderFiles(`${path}/${file.name}`));
+
+                const targetPath = `${path}/${file.name}`;
+                fileElement.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    fileElement.classList.add("drag-over");
+                });
+                fileElement.addEventListener("dragleave", () => {
+                    fileElement.classList.remove("drag-over");
+                });
+                fileElement.addEventListener("drop", async (e) => {
+                    e.preventDefault();
+                    fileElement.classList.remove("drag-over");
+                    const srcPath = e.dataTransfer.getData("text/plain");
+                    if (!srcPath) return;
+                    const fileName = srcPath.split("/").pop();
+                    await fetch("/api/files/rename", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ path: srcPath, newPath: `${targetPath}/${fileName}` })
+                    });
+                    this.renderFiles(this.currentPath, false);
+                });
+
                 directorySidebar.appendChild(fileElement);
             } else {
                 fileElement.classList.add("file-card");
+                fileElement.draggable = true;
+                fileElement.addEventListener("dragstart", (e) => {
+                    e.dataTransfer.setData("text/plain", `${path}/${file.name}`);
+                    fileElement.classList.add("dragging");
+                });
+                fileElement.addEventListener("dragend", () => {
+                    fileElement.classList.remove("dragging");
+                });
+
                 if (this.isVideo(file.name)) {
                     fileElement.addEventListener("click", () => this.openVideo(
                         `/api/files/stream?path=${encodeURIComponent(`${path}/${file.name}`)}`
+                    ));
+                } else if (this.isImage(file.name)) {
+                    fileElement.addEventListener("click", () => this.openImage(
+                        `/api/files/download?path=${encodeURIComponent(`${path}/${file.name}`)}`
                     ));
                 }
 
@@ -242,7 +352,7 @@ class Client {
                 deleteBtn.classList.add("delete-btn");
                 deleteBtn.addEventListener("click", (e) => {
                     e.stopPropagation();
-                    this.deleteFile(`${path}/${file.name}`, fileElement);
+                    this.confirmDelete(`${path}/${file.name}`, fileElement);
                 });
 
                 rightDiv.appendChild(sizeDiv);
@@ -277,7 +387,16 @@ class Client {
         })
         
         document.getElementById("back-btn").addEventListener("click", () => {
+            document.getElementById("search-input").value = "";
             this.renderFiles(this.getParentPath(this.currentPath));
+        });
+
+        document.getElementById("search-input").addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase();
+            document.querySelectorAll(".file-card, .folder-card").forEach(el => {
+                const name = el.querySelector("div")?.innerText?.toLowerCase() ?? "";
+                el.style.display = name.includes(query) ? "" : "none";
+            });
         });
 
         document.getElementById("video-overlay").addEventListener("click", (e) => {
@@ -289,8 +408,27 @@ class Client {
             }
         });
 
+        document.getElementById("image-overlay").addEventListener("click", (e) => {
+            if (e.target === e.currentTarget) {
+                document.getElementById("image-preview").src = "";
+                e.currentTarget.classList.remove("active");
+            }
+        });
+
         window.addEventListener("popstate", (e) => {
             this.renderFiles(e.state?.path ?? "", false);
+        });
+
+        document.getElementById("confirm-ok-btn").addEventListener("click", async () => {
+            if (this._pendingDelete) {
+                await this.deleteFile(this._pendingDelete.path, this._pendingDelete.element);
+                this._pendingDelete = null;
+            }
+            document.getElementById("confirm-overlay").classList.remove("active");
+        });
+        document.getElementById("confirm-cancel-btn").addEventListener("click", () => {
+            this._pendingDelete = null;
+            document.getElementById("confirm-overlay").classList.remove("active");
         });
 
         document.getElementById("editor-save-btn").addEventListener("click", () => this.saveEditor());
@@ -317,56 +455,32 @@ class Client {
 
         input.addEventListener("change", () => {
             if (!input.files[0]) return;
-            const formData = new FormData();
-            formData.append("file", input.files[0]);
+            this.uploadFile(input.files[0], progressBar, progressFill, progressLabel);
+            input.value = "";
+        });
 
-            const xhr = new XMLHttpRequest();
-
-            xhr.upload.addEventListener("progress", (e) => {
-                if (!e.lengthComputable) return;
-                const pct = Math.round((e.loaded / e.total) * 100);
-                progressBar.classList.remove("hidden");
-                progressFill.style.width = `${pct}%`;
-                progressLabel.textContent = `Uploading... ${pct}%`;
-            });
-
-            xhr.addEventListener("load", () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    progressFill.style.width = "100%";
-                    progressLabel.textContent = "Upload complete!";
-                    progressFill.classList.add("success");
-                    setTimeout(() => {
-                        progressBar.classList.add("hidden");
-                        progressFill.style.width = "0%";
-                        progressFill.classList.remove("success");
-                    }, 2000);
-                    this.renderFiles(this.currentPath, false);
-                } else {
-                    progressLabel.textContent = "Upload failed.";
-                    progressFill.classList.add("error");
-                    setTimeout(() => {
-                        progressBar.classList.add("hidden");
-                        progressFill.style.width = "0%";
-                        progressFill.classList.remove("error");
-                    }, 3000);
-                }
-                input.value = "";
-            });
-
-            xhr.addEventListener("error", () => {
-                progressLabel.textContent = "Upload failed.";
-                progressFill.classList.add("error");
-                setTimeout(() => {
-                    progressBar.classList.add("hidden");
-                    progressFill.style.width = "0%";
-                    progressFill.classList.remove("error");
-                }, 3000);
-                input.value = "";
-            });
-
-            xhr.open("POST", `/api/files/upload?path=${encodeURIComponent(this.currentPath)}`);
-            xhr.withCredentials = true;
-            xhr.send(formData);
+        // Desktop drag-and-drop upload
+        const filesContainer = document.getElementById("files-container");
+        let dragCounter = 0;
+        filesContainer.addEventListener("dragenter", (e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            dragCounter++;
+            filesContainer.classList.add("drag-accepting");
+        });
+        filesContainer.addEventListener("dragleave", () => {
+            dragCounter--;
+            if (dragCounter === 0) filesContainer.classList.remove("drag-accepting");
+        });
+        filesContainer.addEventListener("dragover", (e) => {
+            if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        });
+        filesContainer.addEventListener("drop", (e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            dragCounter = 0;
+            filesContainer.classList.remove("drag-accepting");
+            const files = Array.from(e.dataTransfer.files);
+            files.forEach(f => this.uploadFile(f, progressBar, progressFill, progressLabel));
         });
     }
 }
