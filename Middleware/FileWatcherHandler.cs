@@ -1,10 +1,12 @@
-using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 
 public class FileWatcherHandler(WebSocket ws, string rootPath)
 {
+    private readonly Channel<string> _queue = Channel.CreateUnbounded<string>();
+
     public async Task HandleAsync()
     {
         using var watcher = new FileSystemWatcher(rootPath)
@@ -13,10 +15,25 @@ public class FileWatcherHandler(WebSocket ws, string rootPath)
             EnableRaisingEvents = true
         };
 
-        watcher.Created += (_, e) => SendEvent("created", e.FullPath);
-        watcher.Deleted += (_, e) => SendEvent("deleted", e.FullPath);
-        watcher.Renamed += (_, e) => SendEvent("renamed", e.FullPath, e.OldFullPath);
-        watcher.Changed += (_, e) => SendEvent("changed", e.FullPath);
+        watcher.Created += (_, e) => Enqueue("created", e.FullPath);
+        watcher.Deleted += (_, e) => Enqueue("deleted", e.FullPath);
+        watcher.Renamed += (_, e) => Enqueue("renamed", e.FullPath, e.OldFullPath);
+        watcher.Changed += (_, e) => Enqueue("changed", e.FullPath);
+
+        // Send queued events serially so SendAsync is never called concurrently
+        var sender = Task.Run(async () =>
+        {
+            await foreach (var payload in _queue.Reader.ReadAllAsync())
+            {
+                if (ws.State != WebSocketState.Open) break;
+                try
+                {
+                    var bytes = Encoding.UTF8.GetBytes(payload);
+                    await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+                }
+                catch (WebSocketException) { break; }
+            }
+        });
 
         // Keep alive until client disconnects
         var buffer = new byte[1024];
@@ -29,29 +46,22 @@ public class FileWatcherHandler(WebSocket ws, string rootPath)
                 break;
             }
         }
+
+        _queue.Writer.Complete();
+        await sender;
     }
 
-    private async void SendEvent(string type, string fullPath, string? oldPath = null)
+    private void Enqueue(string type, string fullPath, string? oldPath = null)
     {
-        if (ws.State != WebSocketState.Open) return;
-
-        try
+        var payload = JsonSerializer.Serialize(new
         {
-            var payload = JsonSerializer.Serialize(new
-            {
-                type,
-                path    = Path.GetRelativePath(rootPath, fullPath),
-                oldPath = oldPath != null ? Path.GetRelativePath(rootPath, oldPath) : null,
-                name    = Path.GetFileName(fullPath),
-                isDir   = Directory.Exists(fullPath)
-            });
+            type,
+            path    = Path.GetRelativePath(rootPath, fullPath),
+            oldPath = oldPath != null ? Path.GetRelativePath(rootPath, oldPath) : null,
+            name    = Path.GetFileName(fullPath),
+            isDir   = Directory.Exists(fullPath)
+        });
 
-            var bytes = Encoding.UTF8.GetBytes(payload);
-            await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
-        }
-        catch (WebSocketException)
-        {
-            // Client disconnected mid-send, ignore
-        }
+        _queue.Writer.TryWrite(payload);
     }
 }

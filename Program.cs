@@ -25,7 +25,9 @@ app.Use(async (context, next) =>
     bool isPublic = path.StartsWithSegments("/login.html")
                     || path.StartsWithSegments("/login.js")
                     || path.StartsWithSegments("/api/auth")
-                    || path.StartsWithSegments("/styles.css");
+                    || path.StartsWithSegments("/styles.css")
+                    || path.StartsWithSegments("/folder.svg")
+                    || path.StartsWithSegments("/ws");
     if (isPublic)
     {
         await next(context); return;
@@ -59,6 +61,9 @@ app.Map("/ws/watch", async context =>
 {
     if (!context.WebSockets.IsWebSocketRequest) {
         context.Response.StatusCode = 400; return;
+    }
+    if (context.Session.GetString("auth") != "1") {
+        context.Response.StatusCode = 401; return;
     }
     var ws = await context.WebSockets.AcceptWebSocketAsync();
     var rootPath = builder.Configuration["RootPath"]!;

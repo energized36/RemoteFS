@@ -14,13 +14,11 @@ class LoginHandler {
             body: JSON.stringify({username, password})
         });
         if (response.ok) {
-            window.location.href = "/"
-        }
-        else {
-            alert("something went wrong");
+            window.location.href = "/";
+        } else {
+            document.getElementById("login-error").textContent = "Invalid username or password.";
         }
     }
-    
 }
 
 const loginHandler = new LoginHandler();
