@@ -1,8 +1,8 @@
 class Client {
     constructor(){
-        this.server = "localhost:5247";
         this.currentPath = "";
-        this.webSocket = new WebSocket(`ws://${this.server}/ws/watch`);
+        const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+        this.webSocket = new WebSocket(`${wsProtocol}://${location.host}/ws/watch`);
         this.setupListener();
     }
 
@@ -26,7 +26,8 @@ class Client {
 
     // websocket functions
     reconnect(){
-        this.webSocket = new WebSocket(`ws://${this.server}/ws/watch`);
+        const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+        this.webSocket = new WebSocket(`${wsProtocol}://${location.host}/ws/watch`);
         this.setupListener();
     }
 
@@ -84,7 +85,7 @@ class Client {
 
     // api calls
     async logout(){
-        const response = await fetch(`http://${this.server}/api/auth/logout`, {
+        const response = await fetch("/api/auth/logout", {
             method: "POST",
             credentials: "include"
         });
@@ -94,12 +95,12 @@ class Client {
     }
     
     deleteFile(path, element){
-        fetch(`http://localhost:5247/api/files?path=${encodeURIComponent(path)}`, { method: "DELETE" })
+        fetch(`/api/files?path=${encodeURIComponent(path)}`, { method: "DELETE" })
             .then(() => element.remove());
     }
     
     getFiles(path){
-        return fetch(`http://localhost:5247/api/files/list?path=${encodeURIComponent(path)}`).then(res => res.json());
+        return fetch(`/api/files/list?path=${encodeURIComponent(path)}`).then(res => res.json());
     }
 
     
@@ -156,7 +157,7 @@ class Client {
                 fileElement.classList.add("file-card");
                 if (this.isVideo(file.name)) {
                     fileElement.addEventListener("click", () => this.openVideo(
-                        `http://localhost:5247/api/files/stream?path=${encodeURIComponent(`${path}/${file.name}`)}`
+                        `/api/files/stream?path=${encodeURIComponent(`${path}/${file.name}`)}`
                     ));
                 }
 
@@ -173,7 +174,7 @@ class Client {
                 downloadBtn.addEventListener("click", (e) => {
                     e.stopPropagation();
                     const a = document.createElement("a");
-                    a.href = `http://localhost:5247/api/files/download?path=${encodeURIComponent(`${path}/${file.name}`)}`;
+                    a.href = `/api/files/download?path=${encodeURIComponent(`${path}/${file.name}`)}`;
                     a.download = file.name;
                     a.click();
                 });
@@ -228,7 +229,7 @@ class Client {
             if (!input.files[0]) return;
             const formData = new FormData();
             formData.append("file", input.files[0]);
-            const res = await fetch(`http://localhost:5247/api/files/upload?path=${encodeURIComponent(this.currentPath)}`, {
+            const res = await fetch(`/api/files/upload?path=${encodeURIComponent(this.currentPath)}`, {
                 method: "POST",
                 body: formData
             });

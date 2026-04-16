@@ -7,7 +7,7 @@ class LoginHandler {
     async login(){
         const username = document.getElementById("user").value;
         const password = document.getElementById("pw").value;
-        const response = await fetch("http://localhost:5247/api/auth/login", {
+        const response = await fetch("/api/auth/login", {
             method: "POST",
             credentials: "include",
             headers: {"Content-Type": "application/json"},
