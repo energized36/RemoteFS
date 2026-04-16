@@ -64,4 +64,11 @@ public class FilesController(FileService files) : ControllerBase
         files.Mkdir(req.Path);
         return Ok();
     }
+
+    [HttpPut("write")]
+    public IActionResult Write([FromBody] WriteRequest req)
+    {
+        files.Write(req.Path, req.Content);
+        return Ok();
+    }
 }

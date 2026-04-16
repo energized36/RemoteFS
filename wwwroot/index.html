@@ -33,6 +33,28 @@
     <div id="video-overlay">
         <video id="video-player" controls></video>
     </div>
+    <div id="editor-overlay">
+        <div id="editor-card">
+            <div id="editor-header">
+                <span id="editor-filename"></span>
+                <div id="editor-actions">
+                    <button id="editor-save-btn">Save</button>
+                    <button id="editor-close-btn">Close</button>
+                </div>
+            </div>
+            <textarea id="editor-textarea" spellcheck="false"></textarea>
+        </div>
+    </div>
+    <div id="rename-overlay">
+        <div id="rename-card">
+            <label for="rename-input">Rename</label>
+            <input type="text" id="rename-input">
+            <div id="rename-actions">
+                <button id="rename-confirm-btn">Rename</button>
+                <button id="rename-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
     <script src="index.js"></script>
 </body>
 </html>

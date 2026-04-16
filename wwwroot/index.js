@@ -63,6 +63,12 @@ class Client {
         return path.split('/').pop();
     }
 
+    isText(name){
+        return [".txt", ".md", ".json", ".js", ".ts", ".css", ".html", ".xml", ".csv", ".log", ".sh", ".yaml", ".yml", ".env", ".cs", ".py"].includes(
+            name.slice(name.lastIndexOf('.')).toLowerCase()
+        );
+    }
+
     isVideo(name){
         return [".mp4", ".webm", ".ogg", ".mov"].includes(name.slice(name.lastIndexOf('.')).toLowerCase());
     }
@@ -81,6 +87,52 @@ class Client {
         if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
         if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
         return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+    }
+
+    async openEditor(path, name){
+        const res = await fetch(`/api/files/read?path=${encodeURIComponent(path)}`);
+        const text = await res.json();
+        document.getElementById("editor-filename").textContent = name;
+        document.getElementById("editor-textarea").value = text;
+        document.getElementById("editor-overlay").dataset.path = path;
+        document.getElementById("editor-overlay").classList.add("active");
+    }
+
+    async saveEditor(){
+        const path = document.getElementById("editor-overlay").dataset.path;
+        const content = document.getElementById("editor-textarea").value;
+        await fetch(`/api/files/write`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ path, content })
+        });
+        document.getElementById("editor-overlay").classList.remove("active");
+    }
+
+    openRename(path, currentName){
+        const input = document.getElementById("rename-input");
+        input.value = currentName;
+        document.getElementById("rename-overlay").dataset.path = path;
+        document.getElementById("rename-overlay").classList.add("active");
+        input.focus();
+        input.select();
+    }
+
+    async confirmRename(){
+        const overlay = document.getElementById("rename-overlay");
+        const oldPath = overlay.dataset.path;
+        const newName = document.getElementById("rename-input").value.trim();
+        if (!newName) return;
+        const newPath = oldPath.substring(0, oldPath.lastIndexOf("/") + 1) + newName;
+        await fetch("/api/files/rename", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ path: oldPath, newPath })
+        });
+        overlay.classList.remove("active");
+        this.renderFiles(this.currentPath, false);
     }
 
     // api calls
@@ -168,6 +220,14 @@ class Client {
                 dateDiv.innerText = new Date(file.modified).toLocaleString();
                 const sizeDiv = document.createElement("div");
                 sizeDiv.innerText = this.formatSize(file.size);
+                const renameBtn = document.createElement("button");
+                renameBtn.innerText = "Rename";
+                renameBtn.classList.add("rename-btn");
+                renameBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    this.openRename(`${path}/${file.name}`, file.name);
+                });
+
                 const downloadBtn = document.createElement("button");
                 downloadBtn.innerText = "Download";
                 downloadBtn.classList.add("download-btn");
@@ -189,6 +249,17 @@ class Client {
 
                 rightDiv.appendChild(sizeDiv);
                 rightDiv.appendChild(dateDiv);
+                if (this.isText(file.name)) {
+                    const editBtn = document.createElement("button");
+                    editBtn.innerText = "Edit";
+                    editBtn.classList.add("edit-btn");
+                    editBtn.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        this.openEditor(`${path}/${file.name}`, file.name);
+                    });
+                    rightDiv.appendChild(editBtn);
+                }
+                rightDiv.appendChild(renameBtn);
                 rightDiv.appendChild(downloadBtn);
                 rightDiv.appendChild(deleteBtn);
                 fileElement.appendChild(rightDiv);
@@ -222,6 +293,23 @@ class Client {
 
         window.addEventListener("popstate", (e) => {
             this.renderFiles(e.state?.path ?? "", false);
+        });
+
+        document.getElementById("editor-save-btn").addEventListener("click", () => this.saveEditor());
+        document.getElementById("editor-close-btn").addEventListener("click", () => {
+            document.getElementById("editor-overlay").classList.remove("active");
+        });
+        document.getElementById("editor-overlay").addEventListener("click", (e) => {
+            if (e.target === e.currentTarget) document.getElementById("editor-overlay").classList.remove("active");
+        });
+
+        document.getElementById("rename-confirm-btn").addEventListener("click", () => this.confirmRename());
+        document.getElementById("rename-cancel-btn").addEventListener("click", () => {
+            document.getElementById("rename-overlay").classList.remove("active");
+        });
+        document.getElementById("rename-input").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") this.confirmRename();
+            if (e.key === "Escape") document.getElementById("rename-overlay").classList.remove("active");
         });
 
         const input = document.getElementById("upload-input");
