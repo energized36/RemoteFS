@@ -167,6 +167,50 @@ html, body {
     border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* ── Upload progress ─────────────────────────────────── */
+
+#upload-progress {
+    height: 36px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+#upload-progress.hidden {
+    display: none;
+}
+
+#upload-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--accent-dim);
+    transition: width 0.2s ease;
+}
+
+#upload-progress-bar.success {
+    background: rgba(74, 222, 128, 0.2);
+}
+
+#upload-progress-bar.error {
+    background: var(--danger-dim);
+}
+
+#upload-progress-label {
+    position: relative;
+    font-size: 12px;
+    color: var(--text-dim);
+    z-index: 1;
+}
+
 /* ── Explorer body ───────────────────────────────────── */
 
 #explorer-body {

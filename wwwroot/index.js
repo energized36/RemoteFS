@@ -225,20 +225,62 @@ class Client {
         });
 
         const input = document.getElementById("upload-input");
-        input.addEventListener("change", async () => {
+        const progressBar = document.getElementById("upload-progress");
+        const progressFill = document.getElementById("upload-progress-bar");
+        const progressLabel = document.getElementById("upload-progress-label");
+
+        input.addEventListener("change", () => {
             if (!input.files[0]) return;
             const formData = new FormData();
             formData.append("file", input.files[0]);
-            const res = await fetch(`/api/files/upload?path=${encodeURIComponent(this.currentPath)}`, {
-                method: "POST",
-                body: formData
+
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener("progress", (e) => {
+                if (!e.lengthComputable) return;
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.classList.remove("hidden");
+                progressFill.style.width = `${pct}%`;
+                progressLabel.textContent = `Uploading... ${pct}%`;
             });
-            if (!res.ok) {
-                console.error("Upload failed:", res.status, await res.text());
-                return;
-            }
-            input.value = "";
-            this.renderFiles(this.currentPath, false);
+
+            xhr.addEventListener("load", () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    progressFill.style.width = "100%";
+                    progressLabel.textContent = "Upload complete!";
+                    progressFill.classList.add("success");
+                    setTimeout(() => {
+                        progressBar.classList.add("hidden");
+                        progressFill.style.width = "0%";
+                        progressFill.classList.remove("success");
+                    }, 2000);
+                    this.renderFiles(this.currentPath, false);
+                } else {
+                    progressLabel.textContent = "Upload failed.";
+                    progressFill.classList.add("error");
+                    setTimeout(() => {
+                        progressBar.classList.add("hidden");
+                        progressFill.style.width = "0%";
+                        progressFill.classList.remove("error");
+                    }, 3000);
+                }
+                input.value = "";
+            });
+
+            xhr.addEventListener("error", () => {
+                progressLabel.textContent = "Upload failed.";
+                progressFill.classList.add("error");
+                setTimeout(() => {
+                    progressBar.classList.add("hidden");
+                    progressFill.style.width = "0%";
+                    progressFill.classList.remove("error");
+                }, 3000);
+                input.value = "";
+            });
+
+            xhr.open("POST", `/api/files/upload?path=${encodeURIComponent(this.currentPath)}`);
+            xhr.withCredentials = true;
+            xhr.send(formData);
         });
     }
 }
